@@ -10,16 +10,10 @@ env:
   CARGO_TERM_COLOR: always
   BINARY: bevy_ci_template
 
-# Allow Pages deployment when pushing to main
 permissions:
   contents: read
   pages: write
   id-token: write
-
-# Only one Pages deployment runs at a time; don't cancel in-progress ones.
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 jobs:
   # ── Desktop / Linux build ────────────────────────────────────────────────────
@@ -110,12 +104,16 @@ jobs:
           path: wasm-out/
           if-no-files-found: error
 
-  # ── GitHub Pages deployment (push to main only) ──────────────────────────────
+  # ── GitHub Pages deployment ───────────────────────────────────────────────────
+  # Deploys the WASM bundle to GitHub Pages on every successful build-wasm run.
+  # Concurrency is scoped to this job only so it does not block other CI jobs.
   deploy-pages:
     name: Deploy to GitHub Pages
     needs: build-wasm
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
