@@ -1,0 +1,42 @@
+[package]
+name = "bevy_ci_template"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+
+[lib]
+name = "bevy_ci_template"
+crate-type = ["cdylib"]
+
+[[bin]]
+name = "bevy_ci_template"
+path = "src/main.rs"
+
+[features]
+# x11 windowing is enabled by default for Linux desktop.
+# Pass --no-default-features when cross-compiling for Android.
+default = ["bevy/x11"]
+
+[dependencies]
+bevy = { version = "0.18", default-features = false, features = [
+    # GameActivity backend for Android (no-op on non-Android targets).
+    "android-game-activity",
+    "android_shared_stdcxx",
+    # Core rendering
+    "bevy_asset",
+    "bevy_winit",
+    "bevy_render",
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    # 2D / UI
+    "bevy_sprite",
+    "bevy_text",
+    "bevy_ui",
+    # Assets & resources
+    "default_font",
+    "tonemapping_luts",
+    "png",
+    "hdr",
+    # Multithreading
+    "multi_threaded",
+] }
