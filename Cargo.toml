@@ -1,0 +1,48 @@
+[package]
+name = "bevy_ci_template"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+
+[lib]
+name = "bevy_ci_template"
+crate-type = ["cdylib", "lib"]
+
+[[bin]]
+name = "bevy_ci_template"
+path = "src/main.rs"
+
+[features]
+# Linux desktop windowing (default for native builds).
+# Pass --no-default-features when cross-compiling for Android or WASM.
+default = ["bevy/x11"]
+
+# Android: GameActivity backend + shared stdlib.
+# Used by: cargo ndk ... build --lib --no-default-features --features android
+android = ["bevy/android-game-activity", "bevy/android_shared_stdcxx"]
+
+# WASM: WebGPU rendering backend.
+# Used by: cargo build --target wasm32-unknown-unknown --no-default-features --features wasm
+wasm = ["bevy/webgpu"]
+
+[dependencies]
+bevy = { version = "0.18", default-features = false, features = [
+    # Core rendering (all platforms)
+    "bevy_asset",
+    "bevy_winit",
+    "bevy_render",
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    # 2D / UI
+    "bevy_sprite",
+    "bevy_text",
+    "bevy_ui",
+    # Assets & resources
+    "default_font",
+    "tonemapping_luts",
+    "zstd_rust",
+    "png",
+    "hdr",
+    # Multithreading
+    "multi_threaded",
+] }
