@@ -8,6 +8,18 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  BINARY: bevy_ci_template
+
+# Allow Pages deployment when pushing to main
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment runs at a time; don't cancel in-progress ones.
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   # ── Desktop / Linux build ────────────────────────────────────────────────────
@@ -37,7 +49,94 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build (release)
-        run: cargo build --release --bin bevy_ci_template
+        run: cargo build --release --bin ${{ env.BINARY }}
+
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY }}-linux-x86_64
+          path: target/release/${{ env.BINARY }}
+          if-no-files-found: error
+
+  # ── WASM / WebGPU build ──────────────────────────────────────────────────────
+  build-wasm:
+    name: Build WASM (WebGPU)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable + wasm32 target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: wasm-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install wasm-bindgen-cli (version-locked to Cargo.lock)
+        run: |
+          version=$(cargo metadata --format-version 1 \
+            | jq --raw-output '.packages[] | select(.name=="wasm-bindgen") | .version')
+          cargo install -f wasm-bindgen-cli --version "$version"
+
+      - name: Build WASM (WebGPU, no default features)
+        run: |
+          cargo build --release \
+            --target wasm32-unknown-unknown \
+            --no-default-features \
+            --features wasm \
+            --bin ${{ env.BINARY }}
+
+      - name: Generate JS bindings
+        run: |
+          wasm-bindgen \
+            --no-typescript \
+            --out-name bevy_game \
+            --out-dir wasm-out \
+            --target web \
+            target/wasm32-unknown-unknown/release/${{ env.BINARY }}.wasm
+          cp wasm/index.html wasm-out/
+
+      - name: Upload WASM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY }}-wasm
+          path: wasm-out/
+          if-no-files-found: error
+
+  # ── GitHub Pages deployment (push to main only) ──────────────────────────────
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build-wasm
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download WASM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.BINARY }}-wasm
+          path: wasm-out/
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: wasm-out/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
   # ── Android APK build ────────────────────────────────────────────────────────
   build-android:
@@ -84,12 +183,12 @@ jobs:
         run: cargo install cargo-ndk --locked
 
       # 5. Build the Rust shared library for arm64-v8a.
-      #    --no-default-features omits bevy/x11 (a Linux-only dep) from the Android build.
+      #    --no-default-features drops bevy/x11; --features android adds GameActivity backend.
       - name: Build Rust cdylib for aarch64-linux-android
         run: |
           export ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.2.12479018
           cargo ndk -t arm64-v8a -o android/app/src/main/jniLibs \
-            build --lib --release --no-default-features
+            build --lib --release --no-default-features --features android
 
       # 6. Assemble debug APK
       - name: Assemble debug APK
@@ -105,6 +204,3 @@ jobs:
           name: app-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-
-  # ── Pages / WASM workflow (kept intact) ─────────────────────────────────────
-  # Add your existing Pages/WASM jobs here if needed.

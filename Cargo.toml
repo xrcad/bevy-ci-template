@@ -13,16 +13,21 @@ name = "bevy_ci_template"
 path = "src/main.rs"
 
 [features]
-# x11 windowing is enabled by default for Linux desktop.
-# Pass --no-default-features when cross-compiling for Android.
+# Linux desktop windowing (default for native builds).
+# Pass --no-default-features when cross-compiling for Android or WASM.
 default = ["bevy/x11"]
+
+# Android: GameActivity backend + shared stdlib.
+# Used by: cargo ndk ... build --lib --no-default-features --features android
+android = ["bevy/android-game-activity", "bevy/android_shared_stdcxx"]
+
+# WASM: WebGPU rendering backend.
+# Used by: cargo build --target wasm32-unknown-unknown --no-default-features --features wasm
+wasm = ["bevy/webgpu"]
 
 [dependencies]
 bevy = { version = "0.18", default-features = false, features = [
-    # GameActivity backend for Android (no-op on non-Android targets).
-    "android-game-activity",
-    "android_shared_stdcxx",
-    # Core rendering
+    # Core rendering (all platforms)
     "bevy_asset",
     "bevy_winit",
     "bevy_render",
