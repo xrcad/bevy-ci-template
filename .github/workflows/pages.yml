@@ -1,0 +1,73 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Install wasm-bindgen-cli
+        run: cargo install wasm-bindgen-cli --locked
+
+      - name: Build for wasm
+        run: cargo build --release --target wasm32-unknown-unknown
+
+      - name: Determine crate name
+        id: crate
+        run: |
+          CRATE=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name' | tr '-' '_')
+          echo "name=$CRATE" >> "$GITHUB_OUTPUT"
+
+      - name: Run wasm-bindgen
+        run: |
+          mkdir -p dist
+          wasm-bindgen \
+            --out-dir dist \
+            --target web \
+            target/wasm32-unknown-unknown/release/${{ steps.crate.outputs.name }}.wasm
+          mv dist/${{ steps.crate.outputs.name }}.js dist/app.js
+
+      - name: Copy web assets
+        run: cp -r web/. dist/
+
+      - name: Copy game assets
+        run: cp -r assets dist/assets
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

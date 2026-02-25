@@ -1,0 +1,13 @@
+[package]
+name = "bevy-ci-template"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = "0.18.0"
+
+[profile.release]
+opt-level = "z"
+lto = "thin"
+codegen-units = 1
+strip = true
