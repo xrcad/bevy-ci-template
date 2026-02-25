@@ -45,5 +45,8 @@ android {
 }
 
 dependencies {
+    // appcompat must be declared explicitly; games-activity's transitive dep
+    // is not guaranteed to land on the Kotlin compilation classpath.
+    implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.games:games-activity:3.0.5")
 }
