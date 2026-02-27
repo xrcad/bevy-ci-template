@@ -21,6 +21,10 @@ default = ["bevy/x11"]
 # Used by: cargo ndk ... build --lib --no-default-features --features android
 android = ["bevy/android-game-activity", "bevy/android_shared_stdcxx"]
 
+# Wayland: Wayland windowing backend (NixOS / Wayland-first builds).
+# Used by: nix build (see flake.nix)
+wayland = ["bevy/wayland"]
+
 # WASM: WebGPU rendering backend.
 # Used by: cargo build --target wasm32-unknown-unknown --no-default-features --features wasm
 wasm = ["bevy/webgpu"]
