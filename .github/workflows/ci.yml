@@ -8,6 +8,9 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # TEMPLATE: update BINARY to match the [[bin]] name in your Cargo.toml.
+  # This value is also used as the `binaryName` variable in flake.nix —
+  # keep both in sync when you rename your project.
   BINARY: bevy_ci_template
 
 permissions:
@@ -201,4 +204,39 @@ jobs:
         with:
           name: app-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  # ── Nix / NixOS-compatible build ─────────────────────────────────────────────
+  # Builds the binary via flake.nix using crane (Wayland-first, Vulkan).
+  # The resulting binary is wrapped with the correct LD_LIBRARY_PATH so it
+  # runs on NixOS out of the box.
+  #
+  # TEMPLATE: when renaming your project, also update:
+  #   - `binaryName` in flake.nix
+  #   - `env.BINARY` at the top of this file
+  #   - the artifact name below (if you want a custom artifact name)
+  build-nix:
+    name: Build (Nix / NixOS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Build via Nix flake
+        # Builds flake.nix#<BINARY> in release mode with Wayland support.
+        # TEMPLATE: if you rename your package output in flake.nix, update the
+        # reference below accordingly (e.g. .#my_game instead of .#$BINARY).
+        run: nix build .#${{ env.BINARY }} --print-build-logs
+
+      - name: Upload Nix binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          # TEMPLATE: rename this artifact to match your binary name.
+          name: ${{ env.BINARY }}-linux-nix
+          path: result/bin/${{ env.BINARY }}
           if-no-files-found: error
