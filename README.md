@@ -6,6 +6,8 @@ A minimal [Bevy 0.18](https://bevyengine.org/) project template with CI that bui
 - A **WASM/WebGPU** build deployed to **GitHub Pages**
 - An **Android arm64-v8a debug APK** using [GameActivity](https://developer.android.com/games/agdk/game-activity)
 
+The app displays the official **Bevy 3D Shapes** demo scene — a collection of rotating 3D primitives with a UV debug texture. On WASM the canvas stretches to fill the browser viewport and resizes dynamically with the window.
+
 ## Supported Platforms
 
 | Platform | Target | Backend | Status |
